@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: docker.mofid.dev/postgres:15
+    container_name: superset-postgres
+    hostname: postgres
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - /var/postgres_data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superset"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  superset:
+    image: docker.mofid.dev/apache/superset:6.1.0-py310
+    container_name: superset
+    hostname: superset
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - 8088:8088
+    environment:
+      - SUPERSET_SECRET_KEY=${SUPERSET_SECRET_KEY}
+      - SUPERSET_ADMIN_USERNAME=${SUPERSET_ADMIN_USERNAME}
+      - SUPERSET_ADMIN_FIRSTNAME=${SUPERSET_ADMIN_FIRSTNAME}
+      - SUPERSET_ADMIN_LASTNAME=${SUPERSET_ADMIN_LASTNAME}
+      - SUPERSET_ADMIN_EMAIL=${SUPERSET_ADMIN_EMAIL}
+      - SUPERSET_ADMIN_PASSWORD=${SUPERSET_ADMIN_PASSWORD}
+      - AUTH_LDAP_SERVER=${AUTH_LDAP_SERVER}
+      - AUTH_LDAP_BIND_USER=${AUTH_LDAP_BIND_USER}
+      - AUTH_LDAP_BIND_PASSWORD=${AUTH_LDAP_BIND_PASSWORD}
+      - LDAPTLS_REQCERT=never
+      - DATABASE_HOST=postgres
+      - DATABASE_DB=${POSTGRES_DB}
+      - DATABASE_USER=${POSTGRES_USERNAME}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_PORT=5432
+    volumes:
+      - ./superset_home:/app/superset_home
+      - ./superset_config.py:/app/pythonpath/superset_config.py
+      - ./sources.list:/etc/apt/sources.list
+    user: root
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        apt update && \
+        apt install gcc -y && \
+        /app/.venv/bin/python -m ensurepip && \
+        /app/.venv/bin/python -m pip install ldap3 clickhouse-connect psycopg2-binary python-dotenv python-ldap -i https://repo.mofid.dev/artifactory/api/pypi/pypi/simple && \
+        superset db upgrade && \
+        superset init && \
+        superset run -h 0.0.0.0 -p 8088
