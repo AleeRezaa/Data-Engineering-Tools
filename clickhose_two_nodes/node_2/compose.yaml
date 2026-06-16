@@ -1,0 +1,13 @@
+version: "3.7"
+
+services:
+  clickhouse-keeper:
+    image: docker.mofid.dev/clickhouse/clickhouse-server:24.10.2
+    container_name: clickhouse-keeper
+    network_mode: host
+    volumes:
+      - ./keeper/config/:/etc/clickhouse-keeper/
+      - ./keeper/data/:/var/lib/clickhouse-keeper/
+      - ./keeper/logs/:/var/log/clickhouse-keeper/
+    entrypoint: /usr/bin/clickhouse-keeper
+    command: ["--config-file=/etc/clickhouse-keeper/keeper_config.xml"]

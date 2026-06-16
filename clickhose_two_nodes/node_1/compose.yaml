@@ -1,0 +1,33 @@
+version: "3.7"
+
+services:
+  clickhouse-keeper:
+    image: docker.mofid.dev/clickhouse/clickhouse-server:24.10.2
+    container_name: clickhouse-keeper
+    network_mode: host
+    volumes:
+      - ./keeper/config/:/etc/clickhouse-keeper/
+      - ./keeper/data/:/var/lib/clickhouse-keeper/
+      - ./keeper/logs/:/var/log/clickhouse-keeper/
+    entrypoint: /usr/bin/clickhouse-keeper
+    command: ["--config-file=/etc/clickhouse-keeper/keeper_config.xml"]
+
+  clickhouse:
+    image: docker.mofid.dev/clickhouse/clickhouse-server:24.10.2
+    container_name: clickhouse
+    network_mode: host
+    depends_on:
+      - clickhouse-keeper
+    volumes:
+      - /var/clickhouse-data/:/var/lib/clickhouse/
+      - ./clickhouse/logs/:/var/log/clickhouse-server/
+      - ./clickhouse/users/:/etc/clickhouse-server/users.d/
+      - ./clickhouse/config/:/etc/clickhouse-server/config.d/
+    environment:
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 5

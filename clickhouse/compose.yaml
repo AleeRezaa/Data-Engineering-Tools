@@ -1,0 +1,26 @@
+version: "3.7"
+
+services:
+  clickhouse:
+    image: docker.mofid.dev/clickhouse/clickhouse-server:24.10.2
+    container_name: clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - /var/clickhouse-data/:/var/lib/clickhouse/
+      - ./clickhouse/logs/:/var/log/clickhouse-server/
+      - ./clickhouse/users/:/etc/clickhouse-server/users.d/
+    environment:
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
